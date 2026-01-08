@@ -1,27 +1,36 @@
-
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const getProductInsight = async (categoryName: string, cropName: string, productName: string) => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `You are an expert agronomist from Himalaya Hybrid Seeds Company. 
-      Provide a brief, high-value, professional description for a seed product.
-      Category: ${categoryName}
-      Crop: ${cropName}
-      Product: ${productName}
-      
-      The description should highlight yield, disease resistance, fruit characteristics (length/weight/color), and best practices for Indian farmers. Keep it under 100 words. Format with simple Markdown.`,
-      config: {
-        temperature: 0.7,
-        topP: 0.95,
-      }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Supabase environment variables not configured");
+      return "Expert insights are currently unavailable. Please contact our support for detailed product information.";
+    }
+
+    const apiUrl = `${supabaseUrl}/functions/v1/product-insights`;
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        categoryName,
+        cropName,
+        productName
+      })
     });
-    return response.text;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.text || "Expert insights are currently unavailable. Please contact our support for detailed product information.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Error fetching product insights:", error);
     return "Expert insights are currently unavailable. Please contact our support for detailed product information.";
   }
 };
